@@ -4,7 +4,7 @@
 # bqpjson v0.5 - pip install bqpjson
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
-import argparse, json, time, os, sys
+import argparse, json, time, os, sys, math, statistics
 
 import dwave.cloud as dc
 
@@ -58,6 +58,7 @@ def main(args):
         i = lt['id']
         assert(not i in h)
         h[i] = lt['coeff']
+        #print("{}, {}".format(i, lt['coeff']))
 
     J = {}
     for qt in data['quadratic_terms']:
@@ -65,12 +66,36 @@ def main(args):
         j = qt['id_head']
         assert(not (i,j) in J)
         J[(i,j)] = qt['coeff']
+        #print("{}, {}, {}".format(i, j, qt['coeff']))
+
+    anneal_offset_ranges = solver.properties['anneal_offset_ranges']
+    anneal_offset_step = solver.properties['anneal_offset_step']
+
+    f = effective_field(h, J, data['variable_ids'])
+    #print(f)
+
+    f_max = max(f.values())
+    r = {i:v/f_max for (i,v) in f.items()}
+    #print(r)
+
+    delta_max = args.delta_max
+    print("delta max: ", delta_max)
+
+    offsets = [0.0 for v in range(0, max(solver.nodes)+1)]
+    for i in data['variable_ids']:
+        ef_offset = delta_max*(1.0 - 2.0*r[i])
+        if ef_offset < anneal_offset_ranges[i][0]:
+            ef_offset = anneal_offset_ranges[i][0]
+        if ef_offset > anneal_offset_ranges[i][1]:
+            ef_offset = anneal_offset_ranges[i][1]
+        offsets[i] = ef_offset
 
     params = {
         'auto_scale': False,
         'num_reads': args.num_reads,
         'num_spin_reversal_transforms': int(args.num_reads/args.spin_reversal_transform_rate),
-        'annealing_time': args.annealing_time
+        'annealing_time': args.annealing_time,
+        'anneal_offsets': offsets
     }
 
     print('d-wave parameters:')
@@ -83,12 +108,14 @@ def main(args):
 
     client.close()
 
+
+    #print(dir(answers))
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
+        #print(answers['samples'][i])
     samples = float(sum(answers['num_occurrences']))
     mean_energy = sum(answers['num_occurrences'][i] * answers['energies'][i] for i in range(0, len(answers['num_occurrences']))) / samples
     print('mean energy {}'.format(mean_energy))
-
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
@@ -106,6 +133,43 @@ def main(args):
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
+def effective_field(h, J, variable_ids):
+    neighbors = {v:set() for v in variable_ids}
+    edges = {v:set() for v in variable_ids}
+    for ((i,j),v) in J.items():
+        neighbors[i].add(j)
+        neighbors[j].add(i)
+        edges[i].add((j,v))
+        edges[j].add((i,v))
+    #print(neighbors)
+
+    effective_f = {}
+    for i in variable_ids:
+        state_value_abs = []
+        for state in _dfs(neighbors[i], {}):
+            state_eval = h.get(i, 0.0) + sum(v*state[j] for (j,v) in edges[i])
+            #print(i, " ", state, " ", state_eval)
+            state_value_abs.append(abs(state_eval))
+        #print(state_value_abs)
+        state_value_abs_mean = statistics.mean(state_value_abs)
+        #print(state_value_abs_mean)
+        effective_f[i] = state_value_abs_mean
+
+    return effective_f
+
+
+def _dfs(indexes, values):
+    if len(indexes) == 0:
+        yield values
+    else:
+        indexes_next = set(indexes)
+        index = indexes_next.pop()
+        values[index] = -1
+        yield from _dfs(indexes_next, values)
+        values[index] = 1
+        yield from _dfs(indexes_next, values)
+
+
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
@@ -116,6 +180,8 @@ def build_cli_parser():
     parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=10000)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=100)
+
+    parser.add_argument('-dm', '--delta-max', help='maximum value of the annealing offset parameter', type=float, default=0.05)
 
     return parser
 
