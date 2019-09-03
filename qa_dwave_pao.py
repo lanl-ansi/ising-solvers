@@ -4,7 +4,9 @@
 # bqpjson v0.5 - pip install bqpjson
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
-import argparse, json, time, os, sys, math, statistics
+# refrence https://arxiv.org/abs/1806.11091
+
+import argparse, json, time, os, sys, statistics
 
 import dwave.cloud as dc
 
