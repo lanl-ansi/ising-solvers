@@ -4,7 +4,7 @@
 # bqpjson v0.5 - pip install bqpjson
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
-import argparse, json, time, os, sys
+import argparse, json, time, os, sys, math
 
 import dwave.cloud as dc
 
@@ -66,6 +66,9 @@ def main(args):
         assert(not (i,j) in J)
         J[(i,j)] = qt['coeff']
 
+
+    t0 = time.perf_counter()
+
     params = {
         'auto_scale': False,
         'num_reads': args.num_reads,
@@ -77,17 +80,21 @@ def main(args):
     for k,v in params.items():
         print('  {} - {}'.format(k,v))
 
-    t0 = time.time()
+
     answers = solver.sample_ising(h, J, **params)
-    solve_time = time.time() - t0
 
     client.close()
+    solve_time = time.perf_counter() - t0
+
+
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
     samples = float(sum(answers['num_occurrences']))
     mean_energy = sum(answers['num_occurrences'][i] * answers['energies'][i] for i in range(0, len(answers['num_occurrences']))) / samples
-    print('mean energy {}'.format(mean_energy))
+    sd_energy = sum(answers['num_occurrences'][i] * (answers['energies'][i] - mean_energy)**2 for i in range(0, len(answers['num_occurrences']))) / samples
+    sd_energy = math.sqrt(sd_energy/samples)
+    print('energy mean / sd: {} {}'.format(mean_energy, sd_energy))
 
 
     nodes = len(data['variable_ids'])
@@ -103,7 +110,7 @@ def main(args):
     scaled_objective = data['scale']*(best_objective+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
+    print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes, solve_time))
 
 
 def build_cli_parser():

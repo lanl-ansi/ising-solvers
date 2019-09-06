@@ -49,6 +49,8 @@ def main(args):
         print('only spin domains are supported. Given %s' % data['variable_domain'])
         quit()
 
+    t0 = time.perf_counter()
+
     data = bqpjson.spin_to_bool(data)
 
     variable_ids = set(data['variable_ids'])
@@ -106,6 +108,8 @@ def main(args):
     m._cut_count = 0
     m.optimize(cut_counter)
 
+    solve_time = time.perf_counter() - t0
+
     if args.show_solution:
         print('')
         for k,v in variable_lookup.items():
@@ -116,7 +120,7 @@ def main(args):
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
     print('')
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime, m._cut_count, m.NodeCount))
+    print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime, m._cut_count, m.NodeCount, solve_time))
 
 
 def cut_counter(model, where):

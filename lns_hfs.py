@@ -34,7 +34,7 @@
 # }
 #
 
-import sys, os, argparse, json, random, tempfile
+import sys, os, argparse, json, random, tempfile, time
 
 from io import StringIO
 
@@ -61,6 +61,8 @@ def main(args):
     if data['variable_domain'] != 'spin':
         print('only spin domains are supported. Given %s' % data['variable_domain'])
         quit()
+
+    t0 = time.perf_counter()
 
     if not os.path.exists(HFS_DIR):
         os.makedirs(HFS_DIR)
@@ -176,11 +178,13 @@ def main(args):
         print("INFO: HFS error = {}".format(scaled_hfs_objective - scaled_objective), file=sys.stderr)
     print()
 
+    solve_time = time.perf_counter() - t0
+
     remove_tmp_file(tmp_hfs_file)
     remove_tmp_file(tmp_sol_file)
     print()
 
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
+    print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes, solve_time))
 
 
 def create_tmp_file(prefix=None):

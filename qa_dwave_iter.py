@@ -69,6 +69,8 @@ def main(args):
         J[(i,j)] = qt['coeff']
 
 
+    t0 = time.perf_counter()
+
     anneal_offset_ranges = solver.properties['anneal_offset_ranges']
     anneal_offset_step = solver.properties['anneal_offset_step']
     offsets = [0.0 for v in range(0, max(solver.nodes)+1)]
@@ -84,8 +86,6 @@ def main(args):
     print('d-wave parameters:')
     for k,v in params.items():
         print('  {} - {}'.format(k,v))
-
-    t0 = time.time()
 
     for i in range(0, args.max_iterations):
         print('iteration: ', i)
@@ -134,13 +134,17 @@ def main(args):
 
         #print([offsets[v] for v in data['variable_ids']])
 
-    solve_time = time.time() - t0
     client.close()
+    solve_time = time.perf_counter() - t0
 
-    #print(dir(answers))
+
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
-        #print(answers['samples'][i])
+    samples = float(sum(answers['num_occurrences']))
+    mean_energy = sum(answers['num_occurrences'][i] * answers['energies'][i] for i in range(0, len(answers['num_occurrences']))) / samples
+    sd_energy = sum(answers['num_occurrences'][i] * (answers['energies'][i] - mean_energy)**2 for i in range(0, len(answers['num_occurrences']))) / samples
+    sd_energy = math.sqrt(sd_energy/samples)
+    print('energy mean / sd: {} {}'.format(mean_energy, sd_energy))
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
@@ -155,7 +159,7 @@ def main(args):
     scaled_objective = data['scale']*(best_objective+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
+    print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes, solve_time))
 
 
 def floppyness_h1(answers, variable_ids):

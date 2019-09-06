@@ -97,6 +97,8 @@ def main(args):
     if data['variable_domain'] != 'spin':
         raise Exception('only spin domains are supported. Given {}'.format(data['variable_domain']))
 
+    t0 = time.perf_counter()
+
     if args.initial_assignment == 'ran':
         make_restart_assignment = make_random_assignemnt
     elif args.initial_assignment == 'ones':
@@ -143,6 +145,7 @@ def main(args):
     if objective != best_objective:
         raise Exception('final objective values do not match, incremental objective {}, true objective {}'.format(best_objective, objective))
 
+    solve_time = time.perf_counter() - t0
 
     runtime = time.process_time() - start_time
     nodes = len(model.variables)
@@ -161,7 +164,7 @@ def main(args):
     print('best scaled objective:', scaled_objective)
 
     print()
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count))
+    print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count, solve_time))
 
 
 def build_cli_parser():
