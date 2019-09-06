@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, json, random, time, math
+import sys, argparse, json, random, time, math
 from collections import namedtuple
 
 import bqpjson
@@ -123,8 +123,9 @@ def main(args):
     best_objective = objective
     start_time = time.process_time()
     end_time = start_time + args.runtime_limit
+    end_iteration = args.iteration_limit
 
-    while time.process_time() < end_time:
+    while time.process_time() < end_time and iterations < end_iteration:
         result = step(model, assignment, objective)
         if result is None: # restart
             assignment = make_restart_assignment(model)
@@ -174,6 +175,7 @@ def build_cli_parser():
     parser.add_argument('-so', '--show-objectives', help='print the objectives seen by the program', action='store_true', default=False)
     parser.add_argument('-sso', '--show-scaled-objectives', help='print the scaled objectives seen by the program', action='store_true', default=False)
     parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sec.)', type=float, default=10)
+    parser.add_argument('-itl', '--iteration-limit', help='iteration limit', type=int, default=sys.maxsize)
     parser.add_argument('-ia', '--initial_assignment', help='initial assignment when restarting', choices=['ran', 'ones', 'zeros'], default='ran')
     parser.add_argument('-s', '--seed', help='random seed', type=int)
     return parser
