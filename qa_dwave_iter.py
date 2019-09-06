@@ -140,15 +140,28 @@ def main(args):
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
-    samples = float(sum(answers['num_occurrences']))
-    mean_energy = sum(answers['num_occurrences'][i] * answers['energies'][i] for i in range(0, len(answers['num_occurrences']))) / samples
-    sd_energy = sum(answers['num_occurrences'][i] * (answers['energies'][i] - mean_energy)**2 for i in range(0, len(answers['num_occurrences']))) / samples
-    sd_energy = math.sqrt(sd_energy/samples)
-    print('energy mean / sd: {} {}'.format(mean_energy, sd_energy))
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
-    
+    samples = float(sum(answers['num_occurrences']))
+
+    min_energy = float('Inf')
+    min_energy_count = 0
+    for i,energy in enumerate(answers['energies']):
+        if math.isclose(energy, min_energy):
+            min_energy_count += answers['num_occurrences'][i]
+        elif energy < min_energy:
+            min_energy = energy
+            min_energy_count = answers['num_occurrences'][i]
+    min_energy_pr = min_energy_count / samples
+    mean_energy = sum(answers['num_occurrences'][i] * answers['energies'][i] for i in range(0, len(answers['num_occurrences']))) / samples
+    sd_energy = sum(answers['num_occurrences'][i] * (answers['energies'][i] - mean_energy)**2 for i in range(0, len(answers['num_occurrences']))) / samples
+    sd_energy = math.sqrt(sd_energy/samples)
+
+    print()
+    print('ENERGY_DATA, %d, %d, %d, %f, %f, %f, %f' % (nodes, edges, samples, min_energy, min_energy_pr, mean_energy, sd_energy))
+
+
     lt_lb = -sum(abs(lt['coeff']) for lt in data['linear_terms'])
     qt_lb = -sum(abs(qt['coeff']) for qt in data['quadratic_terms']) 
     lower_bound = lt_lb+qt_lb

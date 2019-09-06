@@ -115,11 +115,15 @@ def main(args):
         for k,v in variable_lookup.items():
             print('{:<18}: {}'.format(v.VarName, v.X))
 
+
+
+
     lower_bound = m.MIPGap*m.ObjVal + m.ObjVal
     scaled_objective = data['scale']*(m.ObjVal+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
-    print('')
+    print()
+    print('ENERGY_DATA, %d, %d, %d, %f, %f, %f, %f' % (len(variable_ids), len(variable_product_ids), 1, scaled_objective, 1.0, scaled_objective, 0.0))
     print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime, m._cut_count, m.NodeCount, solve_time))
 
 

@@ -182,8 +182,9 @@ def main(args):
 
     remove_tmp_file(tmp_hfs_file)
     remove_tmp_file(tmp_sol_file)
-    print()
 
+    print()
+    print('ENERGY_DATA, %d, %d, %d, %f, %f, %f, %f' % (nodes, edges, 1, scaled_objective, 1.0, scaled_objective, 0.0))
     print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes, solve_time))
 
 

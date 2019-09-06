@@ -164,6 +164,7 @@ def main(args):
     print('best scaled objective:', scaled_objective)
 
     print()
+    print('ENERGY_DATA, %d, %d, %d, %f, %f, %f, %f' % (nodes, edges, 1, scaled_objective, 1.0, scaled_objective, 0.0))
     print('ISING_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count, solve_time))
 
 
