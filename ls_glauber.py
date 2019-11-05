@@ -140,7 +140,7 @@ def main(args):
             print('scaled objective:', scale * (objective + offset))
 
     objective = evaluate(model, best_assignment)
-    if objective != best_objective:
+    if not math.isclose(objective,best_objective):
         raise Exception('final objective values do not match, incremental objective {}, true objective {}'.format(best_objective, objective))
 
 
