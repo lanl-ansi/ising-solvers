@@ -176,10 +176,16 @@ def main(args):
         print("INFO: HFS error = {}".format(scaled_hfs_objective - scaled_objective), file=sys.stderr)
     print()
 
+    hfs_solution = read_solution(tmp_sol_file)
+    chimera_degree = data['metadata']['chimera_degree']
+    chimera_cell_size = data['metadata']['chimera_cell_size']
+    bqp_solution = ', '.join(["-1" if hfs_solution[hfs_site_idx(vid, chimera_degree, chimera_cell_size)] <= 0.5 else "1" for vid in data['variable_ids']])
+
     remove_tmp_file(tmp_hfs_file)
     remove_tmp_file(tmp_sol_file)
-    print()
 
+    print()
+    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, bqp_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
@@ -245,19 +251,21 @@ def load_bqpjson_problem(data):
     chimera_degree = data['metadata']['chimera_degree']
     chimera_cell_size = data['metadata']['chimera_cell_size']
     assert chimera_cell_size % 2 == 0
-    def hfs_site_idx(bqpjson_idx):
-        cell_idx, site_idx = divmod(bqpjson_idx, chimera_cell_size)
-        row, col = divmod(cell_idx, chimera_degree)
-        a, b = divmod(site_idx, chimera_cell_size//2)
-        return row, col, a, b
     problem = {}
     for lt in data['linear_terms']:
-        i = hfs_site_idx(lt['id'])
+        i = hfs_site_idx(lt['id'], chimera_degree, chimera_cell_size)
         problem[i, i] = lt['coeff']
     for qt in data['quadratic_terms']:
-        i, j = hfs_site_idx(qt['id_tail']), hfs_site_idx(qt['id_head'])
+        i, j = hfs_site_idx(qt['id_tail'], chimera_degree, chimera_cell_size), hfs_site_idx(qt['id_head'], chimera_degree, chimera_cell_size)
         problem[i, j] = qt['coeff']
     return problem
+
+
+def hfs_site_idx(bqpjson_idx, chimera_degree, chimera_cell_size):
+    cell_idx, site_idx = divmod(bqpjson_idx, chimera_cell_size)
+    row, col = divmod(cell_idx, chimera_degree)
+    a, b = divmod(site_idx, chimera_cell_size//2)
+    return row, col, a, b
 
 
 def read_solution(path):

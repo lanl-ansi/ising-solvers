@@ -85,6 +85,9 @@ def main(args):
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
+        if i > 50:
+            print('showed 50 of %d' % len(answers['energies']))
+            break
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
@@ -94,11 +97,14 @@ def main(args):
     lower_bound = lt_lb+qt_lb
 
     best_objective = answers['energies'][0]
+    best_solution = ', '.join([str(answers['solutions'][0][vid]) for vid in data['variable_ids']])
     best_nodes = args.num_reads
     best_runtime = answers['timing']['total_real_time']/1000000.0
     scaled_objective = data['scale']*(best_objective+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
+    print()
+    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 

@@ -168,6 +168,7 @@ def main(args):
     lower_bound = - sum(abs(lt['coeff']) for lt in data['linear_terms']) - sum(abs(qt['coeff']) for qt in data['quadratic_terms']) 
     scaled_objective = scale * (objective + offset)
     scaled_lower_bound = scale * (lower_bound + offset)
+    best_solution = ', '.join([str(int(best_assignment[vid])) for vid in data['variable_ids']])
     cut_count = 0
     node_count = iterations
 
@@ -180,6 +181,7 @@ def main(args):
         print('mean restart energy: %.1f' % (sum(restart_energy)/len(restart_energy)))
 
     print()
+    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count))
 
 
