@@ -103,7 +103,7 @@ def main(args):
     # s - seed
     # m0 - mode of operation, try to find minimum value by heuristic search
     # N - size of Chimera graph 
-    cmd.extend(['-s', '0', '-m0', '-N', str(chimera_degree_effective)])
+    cmd.extend(['-s', str(args.seed), '-m0', '-N', str(chimera_degree_effective)])
 
     if args.runtime_limit != None:
         # t - min run time for some modes
@@ -289,6 +289,7 @@ def build_cli_parser():
 
     parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sec.)', type=float)
 
+    parser.add_argument('-s', '--seed', help='hfs solver seed', type=int, default=0)
     parser.add_argument('-p', '--precision', help='precision of transforming the problem into HFS format', type=int, default=3)
 
     parser.add_argument('-ss', '--show-solution', help='print the solution', action='store_true', default=False)
