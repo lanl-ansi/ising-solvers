@@ -176,7 +176,8 @@ def main(args):
     print('restarts:', restarts)
     print('best objective:', objective)
     print('best scaled objective:', scaled_objective)
-    print('mean restart energy: %.1f' % (sum(restart_energy)/len(restart_energy)))
+    if len(restart_energy) > 0:
+        print('mean restart energy: %.1f' % (sum(restart_energy)/len(restart_energy)))
 
     print()
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count))
