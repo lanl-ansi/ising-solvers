@@ -103,7 +103,7 @@ def main(args):
     # s - seed
     # m0 - mode of operation, try to find minimum value by heuristic search
     # N - size of Chimera graph 
-    cmd.extend(['-s', '0', '-m0', '-N', str(chimera_degree_effective)])
+    cmd.extend(['-s', str(args.seed), '-m0', '-N', str(chimera_degree_effective)])
 
     if args.runtime_limit != None:
         # t - min run time for some modes
@@ -142,7 +142,7 @@ def main(args):
     print('INFO: found {} result lines'.format(len(results)), file=sys.stderr)
     assert(len(results) > 0)
 
-    if args.show_solution:
+    if args.show_hfs_solution:
         print('INFO: qubo solution', file=sys.stderr)
         with open(tmp_sol_file) as f:
             print(f.read(), file=sys.stderr)
@@ -176,11 +176,17 @@ def main(args):
         print("INFO: HFS error = {}".format(scaled_hfs_objective - scaled_objective), file=sys.stderr)
     print()
 
+    print()
+    if args.show_solution:
+        hfs_solution = read_solution(tmp_sol_file)
+        chimera_degree = data['metadata']['chimera_degree']
+        chimera_cell_size = data['metadata']['chimera_cell_size']
+        bqp_solution = ', '.join(["-1" if hfs_solution[hfs_site_idx(vid, chimera_degree, chimera_cell_size)] <= 0.5 else "1" for vid in data['variable_ids']])
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, bqp_solution))
+    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
+
     remove_tmp_file(tmp_hfs_file)
     remove_tmp_file(tmp_sol_file)
-    print()
-
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
 def create_tmp_file(prefix=None):
@@ -245,19 +251,21 @@ def load_bqpjson_problem(data):
     chimera_degree = data['metadata']['chimera_degree']
     chimera_cell_size = data['metadata']['chimera_cell_size']
     assert chimera_cell_size % 2 == 0
-    def hfs_site_idx(bqpjson_idx):
-        cell_idx, site_idx = divmod(bqpjson_idx, chimera_cell_size)
-        row, col = divmod(cell_idx, chimera_degree)
-        a, b = divmod(site_idx, chimera_cell_size//2)
-        return row, col, a, b
     problem = {}
     for lt in data['linear_terms']:
-        i = hfs_site_idx(lt['id'])
+        i = hfs_site_idx(lt['id'], chimera_degree, chimera_cell_size)
         problem[i, i] = lt['coeff']
     for qt in data['quadratic_terms']:
-        i, j = hfs_site_idx(qt['id_tail']), hfs_site_idx(qt['id_head'])
+        i, j = hfs_site_idx(qt['id_tail'], chimera_degree, chimera_cell_size), hfs_site_idx(qt['id_head'], chimera_degree, chimera_cell_size)
         problem[i, j] = qt['coeff']
     return problem
+
+
+def hfs_site_idx(bqpjson_idx, chimera_degree, chimera_cell_size):
+    cell_idx, site_idx = divmod(bqpjson_idx, chimera_cell_size)
+    row, col = divmod(cell_idx, chimera_degree)
+    a, b = divmod(site_idx, chimera_cell_size//2)
+    return row, col, a, b
 
 
 def read_solution(path):
@@ -284,14 +292,15 @@ def evaluate_energy(problem, solution):
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
     parser.add_argument('-dr', '--docker-run', help='run in hfs_alg docker container', action='store_true', default=False)
+    parser.add_argument('-shs', '--show-hfs-solution', help='prints the raw hfs solution data', action='store_true', default=False)
 
     parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sec.)', type=float)
 
+    parser.add_argument('-s', '--seed', help='hfs solver seed', type=int, default=0)
     parser.add_argument('-p', '--precision', help='precision of transforming the problem into HFS format', type=int, default=3)
-
-    parser.add_argument('-ss', '--show-solution', help='print the solution', action='store_true', default=False)
 
     parser.add_argument('-si', '--show-input', help='print the input file', action='store_true', default=False)
 

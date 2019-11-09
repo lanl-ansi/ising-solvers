@@ -73,6 +73,21 @@ def flip_delta(model, assignment, variable):
     return 2.0*delta
 
 
+def step(model, assignment, objective):
+    best_var = None
+    best_delta = math.inf
+    for var in model.variables:
+        delta = flip_delta(model, assignment, var)
+        if delta < best_delta:
+            best_var = var
+            best_delta = delta
+    if best_delta >= 0.0:
+        return None
+    else:
+        flip(assignment, best_var)
+        return best_delta
+
+
 def main(args):
     with open(args.input_file) as input_file:
         data = json.load(input_file)
@@ -102,64 +117,36 @@ def main(args):
     iterations = 1
     restarts = 0
 
-    variable_order = [i for i in model.variables]
     best_assignment = [i for i in assignment]
     best_objective = objective
-    restart_energy = []
     start_time = time.process_time()
     end_time = start_time + args.runtime_limit
 
     while time.process_time() < end_time:
-        #result = step(model, assignment, objective)
-
-        changed = False
-        random.shuffle(variable_order)
-        for var in variable_order:
-            delta = flip_delta(model, assignment, var)
-            #print(var, delta)
-            if delta <= 0.0:
-                changed = True
-                if delta < 0.0:
-                    #print("f", end = '')
-                    flip(assignment, var)
-                    objective += delta
-                    #objective_tmp = evaluate(model, assignment)
-                    #assert(objective == objective_tmp)
-                else:
-                    #print("e", end = '')
-                    if random.random() < 0.5:
-                        #print("g", end = '')
-                        flip(assignment, var)
-                result = None
-
-        if objective < best_objective:
-            best_objective = objective
-            best_assignment = [i for i in assignment]
-            variable_up = sum(assignment[i] > 0 for i in model.variables)
-            variable_down = sum(assignment[i] <= 0 for i in model.variables)
-            print()
-            print(objective, variable_up, variable_down)
-            #print(best_assignment)
-
-        if not changed: # restart
-            print("R", end = '')
-            restart_energy.append(objective)
+        result = step(model, assignment, objective)
+        if result is None: # restart
             assignment = make_restart_assignment(model)
             objective = evaluate(model, assignment)
             restarts += 1
-
-        print("i", end = '')
-        iterations += 1
+        else: # move downward
+            objective += result
+            iterations += 1
+        if objective < best_objective:
+            best_objective = objective
+            best_assignment = [i for i in assignment]
+            #variable_up = sum(assignment[i] > 0 for i in model.variables)
+            #variable_down = sum(assignment[i] <= 0 for i in model.variables)
+            #print(objective, variable_up, variable_down)
 
         if args.show_objectives:
             print('objective:',  objective)
         if args.show_scaled_objectives:
             print('scaled objective:', scale * (objective + offset))
 
-
     objective = evaluate(model, best_assignment)
     if not math.isclose(objective,best_objective):
         raise Exception('final objective values do not match, incremental objective {}, true objective {}'.format(best_objective, objective))
+
 
     runtime = time.process_time() - start_time
     nodes = len(model.variables)
@@ -177,8 +164,6 @@ def main(args):
     print('restarts:', restarts)
     print('best objective:', objective)
     print('best scaled objective:', scaled_objective)
-    if len(restart_energy) > 0:
-        print('mean restart energy: %.1f' % (sum(restart_energy)/len(restart_energy)))
 
     print()
     if args.show_solution:

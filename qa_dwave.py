@@ -4,7 +4,7 @@
 # bqpjson v0.5 - pip install bqpjson
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
-import argparse, json, time, os, sys
+import argparse, json, math, time, os, sys
 
 import dwave.cloud as dc
 
@@ -85,33 +85,64 @@ def main(args):
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
+        if i > 50:
+            print('showed 50 of %d' % len(answers['energies']))
+            break
+
+    if args.compute_hamming_distance:
+        min_energy = min(e for e in answers['energies'])
+        min_energy_states = []
+        for i in range(len(answers['energies'])):
+            if math.isclose(answers['energies'][i], min_energy):
+                sol = answers['solutions'][i]
+                min_energy_states.append([sol[vid] for vid in data['variable_ids']])
+
+        for i in range(len(answers['energies'])):
+            sol = answers['solutions'][i]
+            state = [sol[vid] for vid in data['variable_ids']]
+            min_dist = len(data['variable_ids'])
+
+            for min_state in min_energy_states:
+                dist = sum(min_state[i] != state[i] for i in range(len(data['variable_ids'])))
+                if dist < min_dist:
+                    min_dist = dist
+            print('BQP_ENERGY, %d, %d, %f, %f, %d, %d' % (len(data['variable_ids']), len(data['quadratic_terms']), min_energy, answers['energies'][i], answers['num_occurrences'][i], min_dist))
+
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
-    
+
     lt_lb = -sum(abs(lt['coeff']) for lt in data['linear_terms'])
     qt_lb = -sum(abs(qt['coeff']) for qt in data['quadratic_terms']) 
     lower_bound = lt_lb+qt_lb
 
     best_objective = answers['energies'][0]
+    best_solution = ', '.join([str(answers['solutions'][0][vid]) for vid in data['variable_ids']])
     best_nodes = args.num_reads
     best_runtime = answers['timing']['total_real_time']/1000000.0
     scaled_objective = data['scale']*(best_objective+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
+    print()
+    if args.show_solution:
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
     parser.add_argument('-p', '--profile', help='connection details to load from dwave.conf', default=None)
     parser.add_argument('-ism', '--ignore-solver-metadata', help='connection details to load from dwave.conf', action='store_true', default=False)
 
+    parser.add_argument('-chd', '--compute-hamming-distance', help='computes the hamming distance from the best solution', action='store_true', default=False)
+
     parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=10000)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=100)
+
 
     return parser
 
