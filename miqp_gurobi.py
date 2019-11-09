@@ -105,8 +105,10 @@ def main(args):
     lower_bound = m.MIPGap*m.ObjVal + m.ObjVal
     scaled_objective = data['scale']*(m.ObjVal+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
+    best_solution = ', '.join(["-1" if variable_lookup[vid].X <= 0.5 else "1" for vid in data['variable_ids']])
 
-    print('')
+    print()
+    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (len(variable_ids), len(variable_product_ids), scaled_objective, m.Runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime, m._cut_count, m.NodeCount))
 
 
