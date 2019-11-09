@@ -90,9 +90,31 @@ def main(args):
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
+        if i > 50:
+            print('showed 50 of %d' % len(answers['energies']))
+            break
+
+    if args.compute_hamming_distance:
+        min_energy = min(e for e in answers['energies'])
+        min_energy_states = []
+        for i in range(len(answers['energies'])):
+            if math.isclose(answers['energies'][i], min_energy):
+                sol = answers['solutions'][i]
+                min_energy_states.append([sol[vid] for vid in data['variable_ids']])
+
+        for i in range(len(answers['energies'])):
+            sol = answers['solutions'][i]
+            state = [sol[vid] for vid in data['variable_ids']]
+            min_dist = len(data['variable_ids'])
+
+            for min_state in min_energy_states:
+                dist = sum(min_state[i] != state[i] for i in range(len(data['variable_ids'])))
+                if dist < min_dist:
+                    min_dist = dist
+            print('BQP_ENERGY, %d, %d, %f, %f, %d, %d' % (len(data['variable_ids']), len(data['quadratic_terms']), min_energy, answers['energies'][i], answers['num_occurrences'][i], min_dist))
 
     #print(answers['solutions'][0])
-    qpu_solution = answers['solutions'][0]
+    qa_solution = answers['solutions'][0]
 
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
@@ -132,7 +154,7 @@ def main(args):
     variable_lookup = {}
     for vid in variable_ids:
         variable_lookup[vid] = m.addVar(lb=0, ub=1, vtype = GRB.BINARY, name='site_%04d' % vid)
-        variable_lookup[vid].start = (0 if qpu_solution[vid] <= 0 else 1)
+        variable_lookup[vid].start = (0 if qa_solution[vid] <= 0 else 1)
     m.update()
 
     spin_data = bqpjson.core.swap_variable_domain(data)
@@ -158,16 +180,19 @@ def main(args):
     m._cut_count = 0
     m.optimize(cut_counter)
 
-    if args.show_solution:
-        print('')
-        for k,v in variable_lookup.items():
-            print('{:<18}: {}'.format(v.VarName, v.X))
+    # if args.show_solution:
+    #     print('')
+    #     for k,v in variable_lookup.items():
+    #         print('{:<18}: {}'.format(v.VarName, v.X))
 
     lower_bound = m.MIPGap*m.ObjVal + m.ObjVal
     scaled_objective = data['scale']*(m.ObjVal+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
+    best_solution = ', '.join(["-1" if variable_lookup[vid].X <= 0.5 else "1" for vid in data['variable_ids']])
 
     print('')
+    if args.show_solution:
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (len(variable_ids), len(variable_product_ids), scaled_objective, m.Runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime+qpu_runtime, m._cut_count, m.NodeCount))
 
 
@@ -187,15 +212,16 @@ def cut_counter(model, where):
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
     parser.add_argument('-p', '--profile', help='connection details to load from dwave.conf', default=None)
     parser.add_argument('-ism', '--ignore-solver-metadata', help='connection details to load from dwave.conf', action='store_true', default=False)
 
+    parser.add_argument('-chd', '--compute-hamming-distance', help='computes the hamming distance from the best solution', action='store_true', default=False)
     parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=100)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=11000)
 
-    parser.add_argument('-ss', '--show-solution', help='print the solution', action='store_true', default=False)
     parser.add_argument('-rtl', '--runtime-limit', help='gurobi runtime limit (sec.)', type=float)
     parser.add_argument('-tl', '--thread-limit', help='gurobi thread limit', type=int, default=1)
     parser.add_argument('-cuts', help='gurobi cuts parameter', type=int)
