@@ -4,7 +4,7 @@
 # bqpjson v0.5 - pip install bqpjson
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
-import argparse, json, time, os, sys
+import argparse, json, math, time, os, sys
 
 import dwave.cloud as dc
 
@@ -89,9 +89,29 @@ def main(args):
             print('showed 50 of %d' % len(answers['energies']))
             break
 
+    if args.compute_hamming_distance:
+        min_energy = min(e for e in answers['energies'])
+        min_energy_states = []
+        for i in range(len(answers['energies'])):
+            if math.isclose(answers['energies'][i], min_energy):
+                sol = answers['solutions'][i]
+                min_energy_states.append([sol[vid] for vid in data['variable_ids']])
+
+        for i in range(len(answers['energies'])):
+            sol = answers['solutions'][i]
+            state = [sol[vid] for vid in data['variable_ids']]
+            min_dist = len(data['variable_ids'])
+
+            for min_state in min_energy_states:
+                dist = sum(min_state[i] != state[i] for i in range(len(data['variable_ids'])))
+                if dist < min_dist:
+                    min_dist = dist
+            print('BQP_ENERGY, %d, %d, %f, %f, %d, %d' % (len(data['variable_ids']), len(data['quadratic_terms']), min_energy, answers['energies'][i], answers['num_occurrences'][i], min_dist))
+
+
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
-    
+
     lt_lb = -sum(abs(lt['coeff']) for lt in data['linear_terms'])
     qt_lb = -sum(abs(qt['coeff']) for qt in data['quadratic_terms']) 
     lower_bound = lt_lb+qt_lb
@@ -115,9 +135,12 @@ def build_cli_parser():
     parser.add_argument('-p', '--profile', help='connection details to load from dwave.conf', default=None)
     parser.add_argument('-ism', '--ignore-solver-metadata', help='connection details to load from dwave.conf', action='store_true', default=False)
 
+    parser.add_argument('-chd', '--compute-hamming-distance', help='computes the hamming distance from the best solution', action='store_true', default=False)
+
     parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=10000)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=100)
+
 
     return parser
 
