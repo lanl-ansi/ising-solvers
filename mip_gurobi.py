@@ -106,10 +106,10 @@ def main(args):
     m._cut_count = 0
     m.optimize(cut_counter)
 
-    if args.show_solution:
-        print('')
-        for k,v in variable_lookup.items():
-            print('{:<18}: {}'.format(v.VarName, v.X))
+    # if args.show_solution:
+    #     print('')
+    #     for k,v in variable_lookup.items():
+    #         print('{:<18}: {}'.format(v.VarName, v.X))
 
     lower_bound = m.MIPGap*m.ObjVal + m.ObjVal
     scaled_objective = data['scale']*(m.ObjVal+data['offset'])
@@ -117,7 +117,8 @@ def main(args):
     best_solution = ', '.join(["-1" if variable_lookup[(vid,vid)].X <= 0.5 else "1" for vid in data['variable_ids']])
 
     print()
-    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (len(variable_ids), len(variable_product_ids), scaled_objective, m.Runtime, best_solution))
+    if args.show_solution:
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (len(variable_ids), len(variable_product_ids), scaled_objective, m.Runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (len(variable_ids), len(variable_product_ids), scaled_objective, scaled_lower_bound, m.ObjVal, lower_bound, m.Runtime, m._cut_count, m.NodeCount))
 
 
@@ -137,8 +138,8 @@ def cut_counter(model, where):
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
-    parser.add_argument('-ss', '--show-solution', help='print the solution', action='store_true', default=False)
     parser.add_argument('-rtl', '--runtime-limit', help='gurobi runtime limit (sec.)', type=float)
     parser.add_argument('-tl', '--thread-limit', help='gurobi thread limit', type=int, default=1)
     parser.add_argument('-cuts', help='gurobi cuts parameter', type=int)

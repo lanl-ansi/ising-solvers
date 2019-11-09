@@ -166,13 +166,16 @@ def main(args):
     print('best scaled objective:', scaled_objective)
 
     print()
-    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, runtime, best_solution))
+    if args.show_solution:
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, objective, lower_bound, runtime, cut_count, node_count))
 
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
+
     parser.add_argument('-so', '--show-objectives', help='print the objectives seen by the program', action='store_true', default=False)
     parser.add_argument('-sso', '--show-scaled-objectives', help='print the scaled objectives seen by the program', action='store_true', default=False)
     parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sec.)', type=float, default=10)

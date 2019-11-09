@@ -142,7 +142,7 @@ def main(args):
     print('INFO: found {} result lines'.format(len(results)), file=sys.stderr)
     assert(len(results) > 0)
 
-    if args.show_solution:
+    if args.show_hfs_solution:
         print('INFO: qubo solution', file=sys.stderr)
         with open(tmp_sol_file) as f:
             print(f.read(), file=sys.stderr)
@@ -176,17 +176,17 @@ def main(args):
         print("INFO: HFS error = {}".format(scaled_hfs_objective - scaled_objective), file=sys.stderr)
     print()
 
-    hfs_solution = read_solution(tmp_sol_file)
-    chimera_degree = data['metadata']['chimera_degree']
-    chimera_cell_size = data['metadata']['chimera_cell_size']
-    bqp_solution = ', '.join(["-1" if hfs_solution[hfs_site_idx(vid, chimera_degree, chimera_cell_size)] <= 0.5 else "1" for vid in data['variable_ids']])
+    print()
+    if args.show_solution:
+        hfs_solution = read_solution(tmp_sol_file)
+        chimera_degree = data['metadata']['chimera_degree']
+        chimera_cell_size = data['metadata']['chimera_cell_size']
+        bqp_solution = ', '.join(["-1" if hfs_solution[hfs_site_idx(vid, chimera_degree, chimera_cell_size)] <= 0.5 else "1" for vid in data['variable_ids']])
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, bqp_solution))
+    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
     remove_tmp_file(tmp_hfs_file)
     remove_tmp_file(tmp_sol_file)
-
-    print()
-    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, bqp_solution))
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
 def create_tmp_file(prefix=None):
@@ -292,15 +292,15 @@ def evaluate_energy(problem, solution):
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
     parser.add_argument('-dr', '--docker-run', help='run in hfs_alg docker container', action='store_true', default=False)
+    parser.add_argument('-shs', '--show-hfs-solution', help='prints the raw hfs solution data', action='store_true', default=False)
 
     parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sec.)', type=float)
 
     parser.add_argument('-s', '--seed', help='hfs solver seed', type=int, default=0)
     parser.add_argument('-p', '--precision', help='precision of transforming the problem into HFS format', type=int, default=3)
-
-    parser.add_argument('-ss', '--show-solution', help='print the solution', action='store_true', default=False)
 
     parser.add_argument('-si', '--show-input', help='print the input file', action='store_true', default=False)
 

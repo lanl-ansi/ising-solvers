@@ -124,13 +124,15 @@ def main(args):
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
     print()
-    print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, best_solution))
+    if args.show_solution:
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, best_solution))
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
 
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
+    parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
 
     parser.add_argument('-p', '--profile', help='connection details to load from dwave.conf', default=None)
     parser.add_argument('-ism', '--ignore-solver-metadata', help='connection details to load from dwave.conf', action='store_true', default=False)
