@@ -51,25 +51,28 @@ def f(x, y):
 
 
 def make_zero_messages(model):
-    return {(i,j): 0.0 for i in model.variables for j, _ in model.adjacent[i]}
+    return [[0.0] * len(model.linear_list) for _ in model.linear_list]
 
 
-def update_messages(model, messages, swap, incomings):
+def update_messages(model, messages, scratch, incomings):
+    '''write updated messages to scratch and swap scratch and messages'''
     for i in model.variables:
         for j, coeff in model.adjacent[i]:
-            swap[i, j] = f(2 * coeff, 2 * model.linear_list[i] + incomings[i] - messages[j, i])
-    return swap, messages
+            scratch[i][j] = f(2 * coeff, 2 * model.linear_list[i] + incomings[i] - messages[j][i])
+    return scratch, messages
 
 
 def compute_incomings(model, messages):
+    '''sum of incoming messages for each spin'''
     incomings = [0.0] * len(model.linear_list)
     for i in model.variables:
         for j, _ in model.adjacent[i]:
-            incomings[j] += messages[i, j]
+            incomings[j] += messages[i][j]
     return incomings
 
 
 def update_assignment(model, messages, assignment):
+    '''update the assignment in place, and return the incomings to save later computation'''
     incomings = compute_incomings(model, messages)
     for i in model.variables:
         assignment[i] = -sign(f(2 * model.quadratic_sums[i], 2 * model.linear_list[i] + incomings[i]))
@@ -89,7 +92,7 @@ def main(args):
     scale, offset = data['scale'], data['offset']
 
     messages = make_zero_messages(model)
-    swap = make_zero_messages(model) # swap space when updating messages
+    scratch = make_zero_messages(model) # swap space when updating messages
     assignment = [None] * len(model.linear_list)
     incomings = update_assignment(model, messages, assignment)
     objective = evaluate(model, assignment)
@@ -101,7 +104,7 @@ def main(args):
     end_time = start_time + args.runtime_limit
 
     while time.process_time() < end_time:
-        messages, swap = update_messages(model, messages, swap, incomings)
+        messages, scratch = update_messages(model, messages, scratch, incomings)
         incommings = update_assignment(model, messages, assignment)
         objective = evaluate(model, assignment)
         if objective < best_objective:
