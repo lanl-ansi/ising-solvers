@@ -6,7 +6,7 @@ from collections import namedtuple
 import bqpjson
 
 
-Model = namedtuple('Model', ['variables', 'linear', 'quadratic', 'linear_list', 'adjacent', 'quadratic_sums'])
+Model = namedtuple('Model', ['variables', 'linear', 'quadratic', 'linear_list', 'adjacent'])
 
 
 def load_model(data):
@@ -18,7 +18,6 @@ def load_model(data):
     for var, coeff in linear.items():
         linear_list[var] = coeff
     adjacent = [None] * (max(variables) + 1) # list is faster than dict
-    quadratic_sums = [0.0] * (max(variables) + 1) # list is faster than dict
     for qt in data['quadratic_terms']:
         i, j, coeff = qt['id_tail'], qt['id_head'], qt['coeff']
         if adjacent[i] is None:
@@ -27,10 +26,8 @@ def load_model(data):
         if adjacent[j] is None:
             adjacent[j] = []
         adjacent[j].append((i, coeff))
-        quadratic_sums[i] += coeff
-        quadratic_sums[j] += coeff
 
-    return Model(variables, linear, quadratic, linear_list, adjacent, quadratic_sums)
+    return Model(variables, linear, quadratic, linear_list, adjacent)
 
 
 def evaluate(model, assignment):
@@ -43,7 +40,7 @@ def evaluate(model, assignment):
 
 
 def sign(x):
-    return 1.0 if x > 0 else -1.0
+    return 1.0 if x > 0 else -1.0 if x < 0 else 0.0
 
 
 def f(x, y):
@@ -75,7 +72,7 @@ def update_assignment(model, messages, assignment):
     '''update the assignment in place, and return the incomings to save later computation'''
     incomings = compute_incomings(model, messages)
     for i in model.variables:
-        assignment[i] = -sign(f(2 * model.quadratic_sums[i], 2 * model.linear_list[i] + incomings[i]))
+        assignment[i] = -sign(2 * model.linear_list[i] + incomings[i])
     return incomings
 
 
