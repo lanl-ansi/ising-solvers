@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import argparse, json, time, math
+import argparse, json, time, math, random
 from collections import namedtuple
 
 import bqpjson
@@ -73,6 +73,11 @@ def update_assignment(model, messages, assignment):
     incomings = compute_incomings(model, messages)
     for i in model.variables:
         assignment[i] = -sign(2 * model.linear_list[i] + incomings[i])
+        if math.isclose(assignment[i], 0.0):
+            if random.random() < 0.5:
+                assignment[i] = -1
+            else:
+                assignment[i] = 1
     return incomings
 
 
