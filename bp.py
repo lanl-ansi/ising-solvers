@@ -102,7 +102,7 @@ def main(args):
 
     while time.process_time() < end_time:
         messages, scratch = update_messages(model, messages, scratch, incomings)
-        incommings = update_assignment(model, messages, assignment)
+        incomings = update_assignment(model, messages, assignment)
         objective = evaluate(model, assignment)
         if objective < best_objective:
             best_objective = objective
