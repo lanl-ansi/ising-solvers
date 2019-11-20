@@ -32,6 +32,9 @@ def main(args):
     variable_ids = set(data['variable_ids'])
     variable_product_ids = set([(qt['id_tail'], qt['id_head']) for qt in data['quadratic_terms']])
 
+    #print(data['linear_terms'])
+    #print(data['quadratic_terms'])
+
     objective_best = float("Inf")
     solution_best = {}
     lp_solves = 0
@@ -47,6 +50,8 @@ def main(args):
         m.setParam('OutputFlag', 0)
         m.setParam('Threads', args.thread_limit)
 
+        #m.setParam('Method', 2)
+        #m.setParam('Crossover', 0)
         #m.setParam('Presolve', 2)
         #m.setParam('MIPFocus', 1)
         #m.setParam('MIPFocus', 2)
@@ -81,6 +86,7 @@ def main(args):
             j = qt['id_head']
             obj += qt['coeff']*variable_lookup[(i,j)]
 
+        #print(obj)
         m.setObjective(obj, GRB.MINIMIZE)
 
         m.update()
@@ -93,7 +99,10 @@ def main(args):
         remaining_vars = {i for i in data['variable_ids']}
         var_values = {vid:variable_lookup[(vid,vid)].X for vid in remaining_vars}
         #print(var_values)
+        #for pair in variable_product_ids:
+        #    print(pair, variable_lookup[pair].X)
         #break
+
         while any( abs(val) <= (1.0 - int_tol) for (vid, val) in var_values.items() ):
             var_values_order = sorted(var_values.items(), key=lambda x: abs(x[1]), reverse=True)
 
