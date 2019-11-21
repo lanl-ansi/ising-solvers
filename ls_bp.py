@@ -44,7 +44,7 @@ def sign(x):
 
 
 def f(x, y):
-    return min(x + y, 0) - min(-x + y, 0) - x
+    return min(x + y, 0.0) - min(-x + y, 0.0) - x
 
 
 def make_zero_messages(model):
@@ -55,7 +55,9 @@ def update_messages(model, messages, scratch, incomings):
     '''write updated messages to scratch and swap scratch and messages'''
     for i in model.variables:
         for j, coeff in model.adjacent[i]:
-            scratch[i][j] = f(2 * coeff, 2 * model.linear_list[i] + incomings[i] - messages[j][i])
+            scratch[i][j] = f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i])
+            #scratch[i][j] = 0.5*f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i]) + 0.5*messages[i][j]
+            #print(abs(scratch[i][j] - messages[i][j]))
     return scratch, messages
 
 
@@ -72,12 +74,14 @@ def update_assignment(model, messages, assignment):
     '''update the assignment in place, and return the incomings to save later computation'''
     incomings = compute_incomings(model, messages)
     for i in model.variables:
-        assignment[i] = -sign(2 * model.linear_list[i] + incomings[i])
-        if math.isclose(assignment[i], 0.0):
+        bias = 2 * model.linear_list[i] + incomings[i]
+        if math.isclose(bias, 0.0):
             if random.random() < 0.5:
                 assignment[i] = -1
             else:
                 assignment[i] = 1
+        else:
+            assignment[i] = -sign(bias)
     return incomings
 
 
@@ -119,6 +123,7 @@ def main(args):
         if args.show_scaled_objectives:
             print('scaled objective:', scale * (objective + offset))
 
+    #print(messages)
     runtime = time.process_time() - start_time
     nodes = len(model.variables)
     edges = len(model.quadratic)

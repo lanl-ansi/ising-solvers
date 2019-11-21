@@ -5,7 +5,7 @@
 # gurobi v7.0 - http://www.gurobi.com/
 #
 
-import argparse, json, sys, random, time
+import argparse, json, sys, random, time, math
 
 from gurobipy import *
 
@@ -95,6 +95,7 @@ def main(args):
         #print(m.Runtime)
 
         lower_bound = m.ObjVal
+        #print(m.ObjVal)
 
         remaining_vars = {i for i in data['variable_ids']}
         var_values = {vid:variable_lookup[(vid,vid)].X for vid in remaining_vars}
