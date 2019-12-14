@@ -16,6 +16,12 @@ def evaluate(data, assignment):
         objective += qt['coeff'] * assignment[qt['id_tail']] * assignment[qt['id_head']]
     return objective
 
+def evaluate_neighbors(vid, linear_coeff, neighbors, assignment):
+    objective = 0.0
+    objective += linear_coeff * assignment[vid]
+    for qt in neighbors:
+        objective += qt['coeff'] * assignment[qt['id_tail']] * assignment[qt['id_head']]
+    return objective
 
 
 def main(args):
@@ -35,10 +41,20 @@ def main(args):
     variable_ids = set(data['variable_ids'])
     variable_product_ids = set([(qt['id_tail'], qt['id_head']) for qt in data['quadratic_terms']])
 
+    linear_coeff = {vid:0.0 for vid in data['variable_ids']}
+    for lt in data['linear_terms']:
+        linear_coeff[lt['id']] = lt['coeff']
+
+    neighbors = {vid:[] for vid in data['variable_ids']}
+    for qt in data['quadratic_terms']:
+        neighbors[qt['id_tail']].append(qt)
+        neighbors[qt['id_head']].append(qt)
+
+
     variable_order = [i for i in variable_ids]
 
     objective = float('inf')
-    iterations = 1
+    iterations = 0
     restarts = 0
 
     best_assignment = {vid:0 for vid in variable_ids}
@@ -52,24 +68,25 @@ def main(args):
         assignment_value = 0
         unassigned = set(vid for vid in variable_ids)
 
-
         for i in range(len(variable_order)):
+            iterations += 1
             assignments = []
             for vid in variable_order:
                 if vid in unassigned:
                     #print(vid)
                     assignment[vid] = 1
-                    eval_up = evaluate(data, assignment)
+                    #eval_up = evaluate(data, assignment)
+                    eval_up = evaluate_neighbors(vid, linear_coeff[vid], neighbors[vid], assignment)
                     assignments.append(VariableAssignment(vid,  1, eval_up))
 
                     assignment[vid] = -1
-                    eval_down = evaluate(data, assignment)
+                    #eval_down = evaluate(data, assignment)
+                    eval_down = evaluate_neighbors(vid, linear_coeff[vid], neighbors[vid], assignment)
                     assignments.append(VariableAssignment(vid, -1, eval_down))
 
                     assignment[vid] = 0
 
-            #TODO sort in place
-            assignments = sorted(assignments, key=lambda x: x.energy)
+            assignments.sort(key=lambda x: x.energy)
             #print(assignments)
             min_energy = assignments[0].energy
             min_assignments = []
@@ -81,16 +98,35 @@ def main(args):
             assign = random.choice(min_assignments)
             assignment[assign.variable] = assign.value
             unassigned.remove(assign.variable)
-            print(assign.variable, assign.value)
-        break
+            #print(assign.variable, assign.value)
+            print('.', end = '')
+            if time.process_time() > end_time:
+                break
 
+        if len(unassigned) > 0:
+            for vid in unassigned:
+                assignment[vid] = random.choice([-1,1])
 
-    #objective = evaluate(model, best_assignment)
-    #if not math.isclose(objective,best_objective):
-    #    raise Exception('final objective values do not match, incremental objective {}, true objective {}'.format(best_objective, objective))
+        #print(assignment)
 
+        objective = evaluate(data, assignment)
+        if objective < best_objective:
+            best_assignment = assignment
+            best_objective = objective
+            print('')
+            print("best solution: {}, {}".format(best_objective, time.process_time() - start_time))
+
+        if time.process_time() < end_time:
+            restarts += 1
+            print('R', end = '')
+        #break
 
     runtime = time.process_time() - start_time
+
+    objective = evaluate(data, best_assignment)
+    if not math.isclose(objective, best_objective):
+        raise Exception('final objective values do not match, incremental objective {}, true objective {}'.format(best_objective, objective))
+
     nodes = len(variable_ids)
     edges = len(variable_product_ids)
     objective = best_objective
