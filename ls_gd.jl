@@ -56,25 +56,23 @@ function main(parsed_args)
     best_assignment = [0 for i in 1:n]
     best_energy = 0.0
 
-    variable_order = [i for i in 1:n]
-
     time_start = time()
     while time() - time_start < time_limit
 
-        Random.shuffle!(variable_order)
         assignment = [0 for i in 1:n]
         unassigned = Set(i for i in 1:n)
         iterations = 0
 
-        #println(assignment)
+        assignments = [variable_linear_term[i] * (2*j-1) for i in 1:n, j in 0:1]
+
+        #println(assignments)
         #println(variable_order)
         #println(unassigned)
 
         for i in 1:n
             iterations += 1
-            assignments = []
 
-            for vid in variable_order
+            for vid in 1:n
                 if vid in unassigned
                     @assert assignment[vid] == 0
 
@@ -82,29 +80,32 @@ function main(parsed_args)
                     assignment[vid] = 1
                     #eval_up = evaluate(data, assignment)
                     eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    push!(assignments, (variable=vid, value=1, energy=eval_up))
+                    assignments[vid,2] = eval_up
 
                     assignment[vid] = -1
                     #eval_down = evaluate(data, assignment)
                     eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    push!(assignments, (variable=vid, value=-1, energy=eval_down))
+                    assignments[vid,1] = eval_down
 
                     assignment[vid] = 0
                 end
             end
 
-            min_energy = assignments[1].energy
-            min_assignments = []
-            for assign in assignments
-                if assign.energy < min_energy
-                    min_energy = assign.energy
-                    min_assignments = []
-                end
-                if assign.energy <= min_energy
-                    push!(min_assignments, assign)
+            min_energy = assignments[rand(unassigned),1]
+            min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
+            for vid in unassigned
+                for val in 1:2
+                    energy_delta = assignments[vid,val]
+                    if energy_delta < min_energy
+                        min_energy = energy_delta
+                        min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
+                    end
+                    if energy_delta <= min_energy
+                        push!(min_assignments, (variable=vid, value=(2*(val-1)-1), energy=energy_delta))
+                    end
                 end
             end
-            #println(min_assignments)
+            #println(typeof(min_assignments[1]))
 
             assign = min_assignments[rand(1:length(min_assignments))]
 
@@ -113,6 +114,7 @@ function main(parsed_args)
             post_assign = calc_energy(assignment, linear_terms, quadratic_terms)
             #println(assign.energy, " ", post_assign - pre_assign)
             @assert isapprox(assign.energy, post_assign - pre_assign)
+
             delete!(unassigned, assign.variable)
             #println(assign.variable, " ", assign.value)
             #print(".")
