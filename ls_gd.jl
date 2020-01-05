@@ -57,14 +57,23 @@ function main(parsed_args)
     best_assignment = [0 for i in 1:n]
     best_energy = Inf
 
+    assignment = [0 for i in 1:n]
+    assignments = [0.0 for i in 1:n, j in 0:1]
+
+    # compilatio runs, does not seem to be required
+    #calc_energy(assignment, linear_terms, quadratic_terms)
+    #evaluate_neighbors(1, variable_linear_term[1], neighbors[1], assignment)
+
     time_start = time()
     while time() - time_start < time_limit
 
-        assignment = [0 for i in 1:n]
+        for i in 1:n
+            assignment[i] = 0
+        end
         unassigned = Set(i for i in 1:n)
-
-
-        assignments = [variable_linear_term[i] * (2*j-1) for i in 1:n, j in 0:1]
+        for i in 1:n, j in 0:1
+            assignments[i,j+1] = variable_linear_term[i] * (2*j-1)
+        end
 
         for i in 1:n
             iterations += 1
@@ -132,7 +141,9 @@ function main(parsed_args)
         energy = calc_energy(assignment, linear_terms, quadratic_terms)
         if energy < best_energy
             best_energy = energy
-            best_assignment = assignment
+            for i in 1:n
+                best_assignment[i] = assignment[i]
+            end
             #println(best_assignment)
             print("($(best_energy), $(restarts))")
         end
