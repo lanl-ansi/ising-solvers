@@ -75,20 +75,20 @@ function main(parsed_args)
             assignments[i,j+1] = variable_linear_term[i] * (2*j-1)
         end
 
-        for i in 1:n
+        for r in 1:n
             iterations += 1
 
             min_energy = assignments[rand(unassigned),1]
             min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
-            for vid in unassigned
+            for i in unassigned
                 for val in 1:2
-                    energy_delta = assignments[vid,val]
+                    energy_delta = assignments[i,val]
                     if energy_delta < min_energy
                         min_energy = energy_delta
                         min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
                     end
                     if energy_delta <= min_energy
-                        push!(min_assignments, (variable=vid, value=(2*(val-1)-1), energy=energy_delta))
+                        push!(min_assignments, (variable=i, value=(2*(val-1)-1), energy=energy_delta))
                     end
                 end
             end
@@ -106,35 +106,35 @@ function main(parsed_args)
             #println(assign.variable, " ", assign.value)
             #print(".")
 
-            for (vid, val) in neighbors[assign.variable]
-                if vid in unassigned
-                    #@assert assignment[vid] == 0
+            for (i, val) in neighbors[assign.variable]
+                if i in unassigned
+                    #@assert assignment[i] == 0
 
-                    #print(vid)
-                    assignment[vid] = 1
+                    #print(i)
+                    assignment[i] = 1
                     #eval_up = evaluate(data, assignment)
-                    eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,2] = eval_up
+                    eval_up = evaluate_neighbors(i, variable_linear_term[i], neighbors[i], assignment)
+                    assignments[i,2] = eval_up
 
-                    assignment[vid] = -1
+                    assignment[i] = -1
                     #eval_down = evaluate(data, assignment)
-                    eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,1] = eval_down
+                    eval_down = evaluate_neighbors(i, variable_linear_term[i], neighbors[i], assignment)
+                    assignments[i,1] = eval_down
 
-                    assignment[vid] = 0
+                    assignment[i] = 0
                 end
             end
             if time() - time_start > time_limit
                 println()
-                println("termination at $(i) of $(n)")
+                println("termination at $(r) of $(n)")
                 break
             end
         end
 
         #@assert length(unassigned) == 0
         if length(unassigned) > 0
-            for vid in unassigned
-                assignment[vid] = 2 * rand(Bool) - 1
+            for i in unassigned
+                assignment[i] = 2 * rand(Bool) - 1
             end
         end
 

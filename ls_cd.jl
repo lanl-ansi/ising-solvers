@@ -2,7 +2,7 @@
 
 ### Note ###
 #
-# test with: include("ls_gd.jl"); main(Dict("random-seed" => nothing, "show-solution" => true, "runtime-limit"=>1.0, "input-file" => "---"))
+# test with: include("ls_cd.jl"); main(Dict("random-seed" => nothing, "show-solution" => true, "runtime-limit"=>1.0, "input-file" => "---"))
 #
 
 using ArgParse
@@ -72,26 +72,25 @@ function main(parsed_args)
             assignment[i] = 0
         end
 
-        for vid in variable_order
+        for i in variable_order
             iterations += 1
 
-            #print(vid)
-            assignment[vid] = 1
-            eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+            assignment[i] = 1
+            eval_up = evaluate_neighbors(i, variable_linear_term[i], neighbors[i], assignment)
 
-            assignment[vid] = -1
-            eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+            assignment[i] = -1
+            eval_down = evaluate_neighbors(i, variable_linear_term[i], neighbors[i], assignment)
 
             if eval_up < eval_down
-                assignment[vid] = 1
+                assignment[i] = 1
             end
             if isapprox(eval_up, eval_down) && rand() < 0.5
-                assignment[vid] = 1
+                assignment[i] = 1
             end
 
             if time() - time_start > time_limit
                 println()
-                println("termination at $(vid) of $(n)")
+                println("termination at $(i) of $(n)")
                 break
             end
         end
