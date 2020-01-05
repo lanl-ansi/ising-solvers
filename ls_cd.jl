@@ -61,8 +61,8 @@ function main(parsed_args)
     assignment = [0 for i in 1:n]
 
     # compilatio runs, does not seem to be required
-    calc_energy(assignment, linear_terms, quadratic_terms)
-    evaluate_neighbors(1, variable_linear_term[1], neighbors[1], assignment)
+    #calc_energy(assignment, linear_terms, quadratic_terms)
+    #evaluate_neighbors(1, variable_linear_term[1], neighbors[1], assignment)
 
     time_start = time()
     while time() - time_start < time_limit
