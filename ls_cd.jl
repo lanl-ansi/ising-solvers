@@ -57,84 +57,49 @@ function main(parsed_args)
     best_assignment = [0 for i in 1:n]
     best_energy = Inf
 
+    variable_order = [i for i in 1:n]
     assignment = [0 for i in 1:n]
-    assignments = [0.0 for i in 1:n, j in 0:1]
 
     # compilatio runs, does not seem to be required
-    #calc_energy(assignment, linear_terms, quadratic_terms)
-    #evaluate_neighbors(1, variable_linear_term[1], neighbors[1], assignment)
+    calc_energy(assignment, linear_terms, quadratic_terms)
+    evaluate_neighbors(1, variable_linear_term[1], neighbors[1], assignment)
 
     time_start = time()
     while time() - time_start < time_limit
+        Random.shuffle!(variable_order)
 
         for i in 1:n
             assignment[i] = 0
         end
-        unassigned = Set(i for i in 1:n)
-        for i in 1:n, j in 0:1
-            assignments[i,j+1] = variable_linear_term[i] * (2*j-1)
-        end
 
-        for i in 1:n
+        for vid in variable_order
             iterations += 1
 
-            min_energy = assignments[rand(unassigned),1]
-            min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
-            for vid in unassigned
-                for val in 1:2
-                    energy_delta = assignments[vid,val]
-                    if energy_delta < min_energy
-                        min_energy = energy_delta
-                        min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
-                    end
-                    if energy_delta <= min_energy
-                        push!(min_assignments, (variable=vid, value=(2*(val-1)-1), energy=energy_delta))
-                    end
-                end
+            #print(vid)
+            assignment[vid] = 1
+            eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+
+            assignment[vid] = -1
+            eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+
+            if eval_up < eval_down
+                assignment[vid] = 1
             end
-            #println(typeof(min_assignments[1]))
-
-            assign = min_assignments[rand(1:length(min_assignments))]
-
-            #pre_assign = calc_energy(assignment, linear_terms, quadratic_terms)
-            assignment[assign.variable] = assign.value
-            #post_assign = calc_energy(assignment, linear_terms, quadratic_terms)
-            #println(assign.energy, " ", post_assign - pre_assign)
-            #@assert isapprox(assign.energy, post_assign - pre_assign)
-
-            delete!(unassigned, assign.variable)
-            #println(assign.variable, " ", assign.value)
-            #print(".")
-
-            for (vid, val) in neighbors[assign.variable]
-                if vid in unassigned
-                    #@assert assignment[vid] == 0
-
-                    #print(vid)
-                    assignment[vid] = 1
-                    #eval_up = evaluate(data, assignment)
-                    eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,2] = eval_up
-
-                    assignment[vid] = -1
-                    #eval_down = evaluate(data, assignment)
-                    eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,1] = eval_down
-
-                    assignment[vid] = 0
-                end
+            if isapprox(eval_up, eval_down) && rand() < 0.5
+                assignment[vid] = 1
             end
+
             if time() - time_start > time_limit
                 println()
-                println("termination at $(i) of $(n)")
+                println("termination at $(vid) of $(n)")
                 break
             end
         end
 
         #@assert length(unassigned) == 0
-        if length(unassigned) > 0
-            for vid in unassigned
-                assignment[vid] = 2 * rand(Bool) - 1
+        for i in 1:n
+            if assignment[i] == 0
+                assignment[i] = 2 * rand(Bool) - 1
             end
         end
 
