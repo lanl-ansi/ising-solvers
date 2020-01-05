@@ -53,43 +53,21 @@ function main(parsed_args)
     println("problem size: $(n), $(length(data["quadratic_terms"]))")
 
     restarts = 0
+    iterations = 0
     best_assignment = [0 for i in 1:n]
-    best_energy = 0.0
+    best_energy = Inf
 
     time_start = time()
     while time() - time_start < time_limit
 
         assignment = [0 for i in 1:n]
         unassigned = Set(i for i in 1:n)
-        iterations = 0
+
 
         assignments = [variable_linear_term[i] * (2*j-1) for i in 1:n, j in 0:1]
 
-        #println(assignments)
-        #println(variable_order)
-        #println(unassigned)
-
         for i in 1:n
             iterations += 1
-
-            for vid in 1:n
-                if vid in unassigned
-                    @assert assignment[vid] == 0
-
-                    #print(vid)
-                    assignment[vid] = 1
-                    #eval_up = evaluate(data, assignment)
-                    eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,2] = eval_up
-
-                    assignment[vid] = -1
-                    #eval_down = evaluate(data, assignment)
-                    eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    assignments[vid,1] = eval_down
-
-                    assignment[vid] = 0
-                end
-            end
 
             min_energy = assignments[rand(unassigned),1]
             min_assignments = NamedTuple{(:variable, :value, :energy),Tuple{Int64,Int64,Float64}}[]
@@ -109,28 +87,45 @@ function main(parsed_args)
 
             assign = min_assignments[rand(1:length(min_assignments))]
 
-            pre_assign = calc_energy(assignment, linear_terms, quadratic_terms)
+            #pre_assign = calc_energy(assignment, linear_terms, quadratic_terms)
             assignment[assign.variable] = assign.value
-            post_assign = calc_energy(assignment, linear_terms, quadratic_terms)
+            #post_assign = calc_energy(assignment, linear_terms, quadratic_terms)
             #println(assign.energy, " ", post_assign - pre_assign)
-            @assert isapprox(assign.energy, post_assign - pre_assign)
+            #@assert isapprox(assign.energy, post_assign - pre_assign)
 
             delete!(unassigned, assign.variable)
             #println(assign.variable, " ", assign.value)
             #print(".")
+
+            for (vid, val) in neighbors[assign.variable]
+                if vid in unassigned
+                    #@assert assignment[vid] == 0
+
+                    #print(vid)
+                    assignment[vid] = 1
+                    #eval_up = evaluate(data, assignment)
+                    eval_up = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+                    assignments[vid,2] = eval_up
+
+                    assignment[vid] = -1
+                    #eval_down = evaluate(data, assignment)
+                    eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
+                    assignments[vid,1] = eval_down
+
+                    assignment[vid] = 0
+                end
+            end
             if time() - time_start > time_limit
                 break
             end
         end
 
-        if time() - time_start > time_limit
-            break
+        #@assert length(unassigned) == 0
+        if length(unassigned) > 0
+            for vid in unassigned
+                assignment[vid] = 2 * rand(Bool) - 1
+            end
         end
-
-        @assert length(unassigned) == 0
-        # if len(unassigned) > 0:
-        #     for vid in unassigned:
-        #         assignment[vid] = random.choice([-1,1])
 
         #print(assignment)
 
@@ -143,7 +138,7 @@ function main(parsed_args)
         end
 
         restarts += 1
-        print("R")
+        #print("R")
     end
     println()
     time_elapsed = time() - time_start
@@ -152,7 +147,7 @@ function main(parsed_args)
     println("final energy: $best_energy")
 
     best_solution = Dict(idx_to_var[i] => best_assignment[i]  for i in 1:n)
-    sol_energy = calc_energy(data, best_solution)
+    sol_energy = calc_energy(best_solution, data)
     @assert isapprox(best_energy, sol_energy)
 
     nodes = length(data["variable_ids"])
@@ -188,20 +183,6 @@ function evaluate_neighbors(vid, linear_coeff, neighbors, assignment)::Float64
     return energy
 end
 
-function random_assignment(n, linear_terms, quadratic_terms)
-    assignment = 2 .* rand(Bool, n) .- 1
-
-    energy = 0.0
-    for (i,c) in linear_terms
-        energy += c * assignment[i]
-    end
-
-    for (i,j,c) in quadratic_terms
-        energy += c * assignment[i] * assignment[j]
-    end
-
-    return (assignment=assignment, energy=energy)
-end
 
 function calc_energy(assignment, linear_terms, quadratic_terms)
     energy = 0.0
@@ -216,8 +197,9 @@ function calc_energy(assignment, linear_terms, quadratic_terms)
     return energy
 end
 
+
 "evaluate the enery function given a variable assignment"
-function calc_energy(data, assignment)::Float64
+function calc_energy(assignment, data)::Float64
     energy = 0.0
 
     for qt in data["quadratic_terms"]
