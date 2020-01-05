@@ -66,9 +66,9 @@ function main(parsed_args)
         unassigned = Set(i for i in 1:n)
         iterations = 0
 
-        println(assignment)
-        println(variable_order)
-        println(unassigned)
+        #println(assignment)
+        #println(variable_order)
+        #println(unassigned)
 
         for i in 1:n
             iterations += 1
@@ -87,7 +87,7 @@ function main(parsed_args)
                     assignment[vid] = -1
                     #eval_down = evaluate(data, assignment)
                     eval_down = evaluate_neighbors(vid, variable_linear_term[vid], neighbors[vid], assignment)
-                    push!(assignments, (variable=vid, value=-1, energy=eval_up))
+                    push!(assignments, (variable=vid, value=-1, energy=eval_down))
 
                     assignment[vid] = 0
                 end
@@ -104,13 +104,18 @@ function main(parsed_args)
                     break
                 end
             end
-            println(min_assignments)
+            #println(min_assignments)
 
             assign = min_assignments[rand(1:length(min_assignments))]
+
+            pre_assign = calc_energy(assignment, linear_terms, quadratic_terms)
             assignment[assign.variable] = assign.value
+            post_assign = calc_energy(assignment, linear_terms, quadratic_terms)
+            #println(assign.energy, " ", post_assign - pre_assign)
+            @assert isapprox(assign.energy, post_assign - pre_assign)
             delete!(unassigned, assign.variable)
-            println(assign.variable, " ", assign.value)
-            print(".")
+            #println(assign.variable, " ", assign.value)
+            #print(".")
             if time() - time_start > time_limit
                 break
             end
@@ -127,11 +132,11 @@ function main(parsed_args)
 
         #print(assignment)
 
-        solution = Dict(idx_to_var[i] => assignment[i] for i in 1:n)
-        energy = calc_energy(data, solution)
+        energy = calc_energy(assignment, linear_terms, quadratic_terms)
         if energy < best_energy
             best_energy = energy
-            best_assignment = solution
+            best_assignment = assignment
+            #println(best_assignment)
             print("($(best_energy), $(restarts))")
         end
 
@@ -144,8 +149,7 @@ function main(parsed_args)
     println("restarts: $restarts")
     println("final energy: $best_energy")
 
-    #best_solution = Dict(idx_to_var[i] => best_assignment[i]  for i in 1:n)
-    best_solution = best_assignment
+    best_solution = Dict(idx_to_var[i] => best_assignment[i]  for i in 1:n)
     sol_energy = calc_energy(data, best_solution)
     @assert isapprox(best_energy, sol_energy)
 
@@ -197,6 +201,18 @@ function random_assignment(n, linear_terms, quadratic_terms)
     return (assignment=assignment, energy=energy)
 end
 
+function calc_energy(assignment, linear_terms, quadratic_terms)
+    energy = 0.0
+    for (i,c) in linear_terms
+        energy += c * assignment[i]
+    end
+
+    for (i,j,c) in quadratic_terms
+        energy += c * assignment[i] * assignment[j]
+    end
+
+    return energy
+end
 
 "evaluate the enery function given a variable assignment"
 function calc_energy(data, assignment)::Float64
