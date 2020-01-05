@@ -36,8 +36,6 @@ function main(parsed_args)
         push!(linear_terms, (i, c))
     end
 
-    println(typeof(linear_terms))
-
     quadratic_terms = Tuple{Int64,Int64,Float64}[]
     for qt in data["quadratic_terms"]
         i = var_to_idx[qt["id_head"]]
