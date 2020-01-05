@@ -93,15 +93,15 @@ function main(parsed_args)
                 end
             end
 
-            sort!(assignments, by=x->x.energy)
-            #print(assignments)
             min_energy = assignments[1].energy
             min_assignments = []
             for assign in assignments
+                if assign.energy < min_energy
+                    min_energy = assign.energy
+                    min_assignments = []
+                end
                 if assign.energy <= min_energy
                     push!(min_assignments, assign)
-                else
-                    break
                 end
             end
             #println(min_assignments)
