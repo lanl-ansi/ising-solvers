@@ -236,9 +236,9 @@ function memristive_opt_2(
     h::Vector{Float64},
     Q::Matrix{Float64},
     weights_init::Vector{<:Real};
-    α=0.1,
-    β=1.0,
-    ξ=10.0,
+    α=0.2,
+    β=0.2,
+    ξ=1.0,
     total_time=3000.,
 )
 
@@ -324,7 +324,7 @@ function caravelli_eqn_windowed(
     )
     n = length(Ωs)
 
-    function dwdt(w::Matrix{Float64}, p, t::Float64)
+    function dwdt(w, p, t)
         return w .* (1 .- w).*(α * w - 1/β * (I(n) + ξ*Ω*Diagonal(w)) \ Ωs)
     end
 
