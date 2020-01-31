@@ -73,6 +73,9 @@ def main(args):
         'annealing_time': args.annealing_time
     }
 
+    if args.postprocess_optimization:
+        params['postprocess'] = 'optimization'
+
     print('d-wave parameters:')
     for k,v in params.items():
         print('  {} - {}'.format(k,v))
@@ -142,6 +145,7 @@ def build_cli_parser():
     parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=10000)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=100)
+    parser.add_argument('-ppo', '--postprocess-optimization', help='set the postprocess parameter to optimization', action='store_true', default=False)
 
 
     return parser
