@@ -74,7 +74,7 @@ def main(args):
     params = {
         'auto_scale': False,
         'num_reads': args.num_reads,
-        'num_spin_reversal_transforms': int(args.num_reads/args.spin_reversal_transform_rate),
+        'num_spin_reversal_transforms': int(math.ceil(args.num_reads/args.spin_reversal_transform_rate))-1,
         'annealing_time': args.annealing_time
     }
 
@@ -140,7 +140,7 @@ def main(args):
     m = Model()
 
     if args.runtime_limit != None:
-        m.setParam('TimeLimit', args.runtime_limit)
+        m.setParam('TimeLimit', args.runtime_limit - qpu_runtime)
 
     m.setParam('Threads', args.thread_limit)
 
@@ -218,7 +218,7 @@ def build_cli_parser():
     parser.add_argument('-ism', '--ignore-solver-metadata', help='connection details to load from dwave.conf', action='store_true', default=False)
 
     parser.add_argument('-chd', '--compute-hamming-distance', help='computes the hamming distance from the best solution', action='store_true', default=False)
-    parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=200)
+    parser.add_argument('-nr', '--num-reads', help='the number of reads to take from the d-wave hardware', type=int, default=1000)
     parser.add_argument('-at', '--annealing-time', help='the annealing time of each d-wave sample', type=int, default=5)
     parser.add_argument('-srtr', '--spin-reversal-transform-rate', help='the number of reads to take before each spin reversal transform', type=int, default=101)
 
