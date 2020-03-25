@@ -13,6 +13,7 @@ using JSON
 
 using Random
 using LinearAlgebra
+using DifferentialEquations
 
 function main(parsed_args)
     if !isnothing(parsed_args["random-seed"])
@@ -59,7 +60,8 @@ function main(parsed_args)
     end
 
     # complication run
-    memristive_opt(h, Q, 0.1, [0.5 for i in 1:n], total_time=1)
+    #memristive_opt(h, Q, 0.1,  [0.5 for i in 1:n], total_time=1)
+    memristive_opt_2(h, Q, [0.5 for i in 1:n], total_time=1)
 
     #=
     v = [0 for i in 1:n]
@@ -84,7 +86,8 @@ function main(parsed_args)
     while time() - time_start < parsed_args["runtime-limit"]
         v = [Random.rand() for i in 1:n]
 
-        weights_final, energies = memristive_opt(h, Q, p, v, total_time=parsed_args["max-steps"])
+        #weights_final, energies = memristive_opt(h, Q, p, v, total_time=parsed_args["max-steps"])
+        weights_final, energies = memristive_opt_2(h, Q, v, total_time=parsed_args["max-steps"])
 
         #println("energies trace: $energies")
         #println("weights: $weights_final")
@@ -166,7 +169,7 @@ function memristive_opt(
     weights_series = Matrix{Float64}(undef, n, total_time)
     weights_series[:, 1] = weights_init
     energies = Vector{Float64}(undef, total_time)
-    energies[1] = energy(expected_returns, Σ, p, weights_series[:, 1])
+    energies[1] = energy(expected_returns, Σ, weights_series[:, 1], p=p)
 
     # Compute resistance change ratio
     ξ = p / 2α
@@ -200,7 +203,7 @@ function memristive_opt(
         weights_series[weights_series[:, t+1] .> 1, t+1] .= 1.0
         weights_series[weights_series[:, t+1] .< 1, t+1] .= 0.0
 
-        energies[t + 1] = energy(expected_returns, Σ, p, weights_series[:, t+1])
+        energies[t + 1] = energy(expected_returns, Σ, weights_series[:, t+1], p=p)
         #println(weights_series[:, t+1])
         #println(energies[t + 1])
         t += 1
@@ -215,34 +218,135 @@ function memristive_opt(
     return weights_final, energies
 end
 
-
 """
-    energy(
-        expected_returns::Vector{Float64},
-        Σ::Matrix{Float64},
-        p::Float64,
-        weights::Vector{Float64},
+    memristive_opt_2(
+        h::Vector{Float64},
+        Q::Matrix{Float64},
+        weights_init::Vector{<:Real};
+        α=0.1,
+        β=10,
+        total_time=3000,
     )
 
-Return minus the expected return corrected by the variance of the portfolio,
-according to the Markowitz approach. `Σ` represents the covariance of the assets,
-`p` controls the risk tolerance and `weights` represent the (here binary)
-portfolio composition.
+Heuristic optimization via a memristive network.  Changes to the above include
+a windowed memristive dynamics equation, and a changed mapping that ensures
+Ω is PSD.
 """
-function energy(
-    expected_returns::Vector{Float64},
-    Σ::Matrix{Float64},
-    p::Float64,
-    weights::Vector{<:Real},
+function memristive_opt_2(
+    h::Vector{Float64},
+    Q::Matrix{Float64},
+    weights_init::Vector{<:Real};
+    α=0.2,
+    β=0.2,
+    ξ=1.0,
+    total_time=3000.,
 )
-    -dot(expected_returns, weights) + p/2 * weights' * Σ * weights
+
+    n = length(h)
+
+    v = [Random.rand() for i in 1:n]
+
+    v = reshape(v, n, 1)
+
+    # I don't understand at the moment why this minus sign is required
+    Ω, Ωs = convert_QUBO_to_MEMNET(-Q, h, α, β, ξ)
+
+    dwdt = caravelli_eqn_windowed(Ω, Ωs, α, β, ξ)
+
+    function condition(u, t, integrator)
+        w = integrator.u
+        maximum(w .* (1.0 .- w)) < 1e-3
+    end
+
+    function affect!(integrator)
+        terminate!(integrator)
+    end
+
+    cb = DiscreteCallback(condition, affect!, save_positions=(true, true))
+
+    tspan = (0.0, total_time)
+    prob = ODEProblem(dwdt, v, tspan)
+
+    sol = solve(prob, reltol=1e-6, callback=cb)
+
+    t = sol.t
+    w_traj = sol.u
+
+    tsteps = length(t)
+    energies = zeros(tsteps)
+
+    for idx in 1:tsteps
+        energies[idx] = energy(h, Q, vec(w_traj[idx]))
+    end
+
+    return w_traj[tsteps], energies
+end
+
+
+function convert_QUBO_to_MEMNET(Q, h, α, ξ, β)
+
+    n = length(h)
+    # Q should have zero diagonal
+    Q[diagind(Q)] .= 0
+    Ω = -Q/(α*ξ)
+    mineval = minimum(eigvals(Ω))
+
+    Ω[diagind(Ω)] .= -mineval
+    Ωs = β * (α/2 * ones(n, 1) + (α * ξ/3) * diag(Ω) + h)
+
+    return Ω, Ωs
+end
+
+
+"""
+    caravelli_eqn_windowed(
+        Ω::Matrix{Float64},
+        Ωs::Matrix{Float64},
+        α::Float64,
+        β::Float64,
+        ξ
+    )
+
+A windowed version of the equations of motion for a memristive network.
+Ω is the network projection matrix
+Ωs is the source vector which is assumed to live in the space projected
+by Ω
+α is the memristive decay constant
+β is the growth timescale
+ξ is (R_off - R_on)/R_on
+"""
+function caravelli_eqn_windowed(
+    Ω::Matrix{Float64},
+    Ωs::Matrix{Float64},
+    α::Float64,
+    β::Float64,
+    ξ::Float64
+    )
+    n = length(Ωs)
+
+    function dwdt(w, p, t)
+        return w .* (1 .- w).*(α * w - 1/β * (I(n) + ξ*Ω*Diagonal(w)) \ Ωs)
+    end
+
+    return dwdt
+end
+
+
+
+function energy(
+    h::Vector{Float64},
+    Q::Matrix{Float64},
+    weights::Vector{<:Real};
+    p=2.0
+)
+    dot(h, weights) +  p/2 * weights' * Q * weights
 end
 
 
 "checks that qubo evalution matches energy function evaluation"
 function check_encoding(h, Q, assignment, data)
     eval_q = assignment' * Q * assignment - dot(h, assignment)
-    eval_energy = energy(h, Q, 2.0, assignment)
+    eval_energy = energy(h, Q, assignment)
     #println(eval_q, " ", eval_energy)
 
     #eval_data = calc_energy(data, Dict(data["variable_ids"][i] => v for (i,v) in enumerate(assignment)))
