@@ -69,7 +69,7 @@ def main(args):
     params = {
         'auto_scale': False,
         'num_reads': args.num_reads,
-        'num_spin_reversal_transforms': int(args.num_reads/args.spin_reversal_transform_rate),
+        'num_spin_reversal_transforms': int(math.ceil(args.num_reads/args.spin_reversal_transform_rate))-1,
         'annealing_time': args.annealing_time
     }
 
