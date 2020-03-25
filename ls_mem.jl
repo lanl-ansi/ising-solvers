@@ -449,7 +449,7 @@ end
 function parse_commandline()
     s = ArgParseSettings()
 
-    @add_arg_table s begin
+    @add_arg_table! s begin
         "--input-file", "-f"
             help = "the data file to operate on (.json)"
             required = true
