@@ -78,7 +78,7 @@ def main(args):
     if len(spin_data['linear_terms']) <= 0 or all(lt['coeff'] == 0.0 for lt in spin_data['linear_terms']):
         print('detected spin symmetry, adding symmetry breaking constraint')
         v1 = data['variable_ids'][0]
-        m.addConstr(variable_lookup[(v1,v1)] == 0)
+        m.addConstr(variable_lookup[v1] == 0)
 
     obj = 0.0
     for lt in data['linear_terms']:
