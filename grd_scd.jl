@@ -172,8 +172,14 @@ function main(parsed_args)
 
     scale = data["scale"]
     offset = data["offset"]
-    lt_lb = -sum(abs(lt["coeff"]) for lt in data["linear_terms"])/scale
-    qt_lb = -sum(abs(qt["coeff"]) for qt in data["quadratic_terms"])/scale
+    lt_lb = 0.0
+    if length(data["linear_terms"]) > 0
+        lt_lb = -sum(abs(lt["coeff"]) for lt in data["linear_terms"])/scale
+    end
+    qt_lb = 0.0
+    if length(data["quadratic_terms"]) > 0
+        qt_lb = -sum(abs(qt["coeff"]) for qt in data["quadratic_terms"])/scale
+    end
     lower_bound = lt_lb+qt_lb
 
     best_objective = best_energy
