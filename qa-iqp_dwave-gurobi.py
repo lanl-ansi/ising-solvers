@@ -125,7 +125,7 @@ def main(args):
 
     #best_objective = answers['energies'][0]
     #best_nodes = args.num_reads
-    qpu_runtime = answers['timing']['total_real_time']/1000000.0
+    qpu_runtime = answers['timing']['qpu_access_time']/1000000.0
     #scaled_objective = data['scale']*(best_objective+data['offset'])
     #scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 

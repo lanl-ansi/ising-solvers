@@ -122,7 +122,7 @@ def main(args):
     best_objective = answers['energies'][0]
     best_solution = ', '.join([str(answers['solutions'][0][vid]) for vid in data['variable_ids']])
     best_nodes = args.num_reads
-    best_runtime = answers['timing']['total_real_time']/1000000.0
+    best_runtime = answers['timing']['qpu_access_time']/1000000.0
     scaled_objective = data['scale']*(best_objective+data['offset'])
     scaled_lower_bound = data['scale']*(lower_bound+data['offset'])
 
