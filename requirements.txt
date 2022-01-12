@@ -1,0 +1,3 @@
+dwave-neal
+dwave-tabu
+dwave-greedy
