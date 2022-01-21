@@ -19,9 +19,6 @@ from collections import namedtuple
 
 import bqpjson
 
-PT_DIR = 'parallel-tempering'
-Result = namedtuple('Result', ['nodes', 'objective', 'runtime'])
-
 def write_bqpjson_as_txt(directory, data):
     output_path = os.path.join(directory, "input.txt")
 
@@ -40,9 +37,11 @@ def parse_result(result_path):
     with open(result_path, "r") as output:
         energy_lines = output.readlines()[1:-1]
         energies = [float(x.split('\t')[1]) for x in energy_lines]
-        minimum_energy = np.min(energies)
+        minimum_energy_index = np.argmin(energies, axis = 0)
+        minimum_energy = energies[minimum_energy_index]
+        best_solution = energy_lines[minimum_energy_index].split(' ')[-1]
 
-    return minimum_energy
+    return minimum_energy, best_solution
 
 
 def main(args):
@@ -70,14 +69,27 @@ def main(args):
 
     result_path = os.path.join(tmp_directory, "EnergiesFound_input.dat")
 
-    energy = parse_result(result_path)
+    # Get the best energy, corresponding solution, and metadata.
+    energy, solution = parse_result(result_path)
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
 
-    # TODO: Print solution data, if desired.
+    # Estimate lower bound from the problem data. 
+    lt_lb = -sum(abs(lt['coeff']) for lt in data['linear_terms'])
+    qt_lb = -sum(abs(qt['coeff']) for qt in data['quadratic_terms'])
+    lower_bound = lt_lb + qt_lb
+    scaled_lower_bound = data['scale'] * (lower_bound + data['offset'])
+
+    # Print solution data.
+    print()
+
+    if args.show_solution:
+        bqp_solution = ', '.join(["-1" if solution[i] == "0" else "1" for i in range(0, nodes)])
+        print('BQP_SOLUTION, %d, %d, %f, %f, %s' % \
+            (nodes, edges, energy, elapsed_time, bqp_solution))
 
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % \
-        (nodes, edges, energy, energy, energy, energy, elapsed_time, 0, 0))
+        (nodes, edges, energy, scaled_lower_bound, energy, lower_bound, elapsed_time, 0, 0))
 
     # Clean up.
     shutil.rmtree(tmp_directory)
