@@ -22,6 +22,7 @@ function main(parsed_args)
     #read the problem
     file = open(parsed_args["input-file"])
     data = JSON.parse(file)
+	close(file)
 
     if data["variable_domain"] != "spin"
         error("only spin domains are supported. Given $(data["variable_domain"])")

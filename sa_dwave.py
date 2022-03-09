@@ -44,7 +44,7 @@ def main(args):
 
     # Sample the simulated annealing solver `args.runtime_limit` number of times.
     start_time = time.time()
-    sample_set = sampler.sample_ising(h, J, num_reads = args.runtime_limit)
+    sample_set = sampler.sample_ising(h, J, num_reads = 100, num_sweeps = args.runtime_limit)
     time_elapsed = time.time() - start_time
 
     # Get the sample with the lowest energy.

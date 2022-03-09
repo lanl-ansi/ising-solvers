@@ -2,7 +2,7 @@
 
 ### Requirements ###
 # bqpjson v0.5.3 - pip install bqpjson
-# parallel-tempering - private repository
+# streaming-variational-monte-carlo - private repository
 
 import sys, os, argparse, json, random, tempfile
 import shutil
@@ -18,6 +18,7 @@ from subprocess import PIPE
 from collections import namedtuple
 
 import bqpjson
+
 
 def write_bqpjson_as_txt(directory, data):
     output_path = os.path.join(directory, "input.txt")
@@ -35,13 +36,17 @@ def write_bqpjson_as_txt(directory, data):
 
 def parse_result(result_path):
     with open(result_path, "r") as output:
-        energy_lines = output.readlines()[1:-1]
-        energies = [float(x.split('\t')[1]) for x in energy_lines]
-        minimum_energy_index = np.argmin(energies, axis = 0)
-        minimum_energy = energies[minimum_energy_index]
-        best_solution = energy_lines[minimum_energy_index].split(' ')[-1]
+        all_lines = output.readlines()
+        summary_line = all_lines[0].strip()
+        summary_line = " ".join(summary_line.split())
 
-    return minimum_energy, best_solution
+        num_sweeps = int(summary_line.split(' ')[0])
+        solve_time = float(summary_line.split(' ')[1])
+        minimum_energy = float(summary_line.split(' ')[2])
+        best_solution = all_lines[1].replace('0', '')
+        best_solution = " ".join(best_solution.split()).strip()
+       
+    return num_sweeps, solve_time, minimum_energy, best_solution
 
 
 def main(args):
@@ -61,16 +66,22 @@ def main(args):
     input_path = write_bqpjson_as_txt(tmp_directory, data)
     input_name = os.path.splitext(os.path.basename(input_path))[0]
 
+    # Must be divisible by the number of points in the annealing schedule.
+    assert int(args.runtime_limit) % 1000 == 0
+
+    # Get the effective local field setting.
+    elf_setting = 1 if not args.effective_local_field else 2
+
     start_time = time.time()
-    subprocess.call(["mpiexec", "-np", "8", "parallel-tempering", "64", \
-        "2", "0.1", "5.0", "0", "0", "1", str(args.runtime_limit), "8", \
-        "-999999.9", "0", input_name], stdout = subprocess.DEVNULL, cwd = tmp_directory)
+    subprocess.call(["mpiexec", "-np", "8", "svmc", "12", \
+        str(args.runtime_limit), "8", "0", str(elf_setting), input_name], \
+        stdout = subprocess.DEVNULL, cwd = tmp_directory)
     elapsed_time = time.time() - start_time
 
-    result_path = os.path.join(tmp_directory, "EnergiesFound_input.dat")
+    result_path = os.path.join(tmp_directory, "SVMC_LowestEnergyFound_input.dat")
 
-    # Get the best energy, corresponding solution, and metadata.
-    energy, solution = parse_result(result_path)
+    # Get the best energy, corresponding solution, and other metadata.
+    num_sweeps, solve_time, energy, solution = parse_result(result_path)
     nodes = len(data['variable_ids'])
     edges = len(data['quadratic_terms'])
 
@@ -84,21 +95,23 @@ def main(args):
     print()
 
     if args.show_solution:
-        bqp_solution = ', '.join(["-1" if solution[i] == "0" else "1" for i in range(0, nodes)])
+        bqp_solution = solution.replace(' ', ', ')
         print('BQP_SOLUTION, %d, %d, %f, %f, %s' % \
-            (nodes, edges, energy, elapsed_time, bqp_solution))
+            (nodes, edges, energy, solve_time, bqp_solution))
 
     print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % \
-        (nodes, edges, energy, scaled_lower_bound, energy, lower_bound, elapsed_time, 0, 0))
+        (nodes, edges, energy, scaled_lower_bound, energy, lower_bound, solve_time, 0, num_sweeps))
 
     # Clean up.
     shutil.rmtree(tmp_directory)
+
 
 def build_cli_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('-f', '--input-file', help='the data file to operate on (.json)')
     parser.add_argument('-ss', '--show-solution', help='prints the a solution data line', action='store_true', default=False)
-    parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (iters.)', type=int)
+    parser.add_argument('-rtl', '--runtime-limit', help='runtime limit (sweeps)', type=int)
+    parser.add_argument('-elf', '--effective-local-field', help='whether or not to use the effective local field in updates', action='store_true', default=False)
     return parser
 
 
