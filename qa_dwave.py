@@ -5,9 +5,7 @@
 # dwave-cloud-client v0.5.4 - pip install dwave-cloud-client
 
 import argparse, json, math, time, os, sys
-
 import dwave.cloud as dc
-
 import bqpjson
 
 def main(args):
@@ -23,8 +21,15 @@ def main(args):
         print('only spin domains are supported. Given %s' % data['variable_domain'])
         quit()
 
-    # A core assumption of this solver is that the given B-QP will magically be compatable with the given D-Wave QPU
+    total_solve_time = 0.0
+
+    # A core assumption of this solver is that the given B-QP will magically be
+    # compatible with the given D-Wave QPU.
+    t0 = time.time()
     dw_config = dc.config.load_config(os.getenv("HOME")+"/dwave.conf", profile=args.profile)
+    load_config_time = time.time() - t0
+    total_solve_time += load_config_time
+
     dw_chip_id = None
 
     if 'dw_endpoint' in data['metadata'] and not args.ignore_solver_metadata:
@@ -39,8 +44,15 @@ def main(args):
         dw_chip_id = data['metadata']['dw_chip_id']
         print('found d-wave chip id in data file: %s' % dw_chip_id)
 
+    t0 = time.time()
     client = dc.Client.from_config(**dw_config)
+    get_client_time = time.time() - t0
+    total_solve_time += get_client_time
+
+    t0 = time.time()
     solver = client.get_solver()
+    get_solver_time = time.time() - t0
+    total_solve_time += get_solver_time
 
     if not dw_chip_id is None:
         if solver.properties['chip_id'] != dw_chip_id:
@@ -82,9 +94,12 @@ def main(args):
 
     t0 = time.time()
     answers = solver.sample_ising(h, J, **params)
-    solve_time = time.time() - t0
-
     client.close()
+
+    # Trigger synchronization of the above.
+    answer_len = len(answers['energies'])
+    solve_time = time.time() - t0
+    total_solve_time += solve_time
 
     for i in range(len(answers['energies'])):
         print('%f - %d' % (answers['energies'][i], answers['num_occurrences'][i]))
@@ -129,7 +144,7 @@ def main(args):
     print()
     if args.show_solution:
         print('BQP_SOLUTION, %d, %d, %f, %f, %s' % (nodes, edges, scaled_objective, best_runtime, best_solution))
-    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes))
+    print('BQP_DATA, %d, %d, %f, %f, %f, %f, %f, %d, %d, %f, %f, %f, %f, %f' % (nodes, edges, scaled_objective, scaled_lower_bound, best_objective, lower_bound, best_runtime, 0, best_nodes, load_config_time, get_client_time, get_solver_time, solve_time, total_solve_time))
 
 
 def build_cli_parser():
