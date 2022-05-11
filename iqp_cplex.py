@@ -1,9 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 ### Requirements ###
 # bqpjson v0.5 - pip install bqpjson
 # cplex v22.1.0 - see CPLEX installation instructions
-
 
 ### NOTE ###
 # these are good articles to reference when using this solver
@@ -16,7 +15,7 @@
 #   url = {https://arxiv.org/abs/1612.05024}
 # }
 
-# @Article{Billionnet2007,
+# @article{Billionnet2007,
 #   author="Billionnet, Alain and Elloumi, Sourour",
 #   title="Using a Mixed Integer Quadratic Programming Solver for the Unconstrained Quadratic 0-1 Problem",
 #   journal="Mathematical Programming",
@@ -35,8 +34,10 @@ import bqpjson
 import json
 import sys
 
+
 from docplex.mp.model import Model
 from docplex.util.environment import get_environment
+
 
 def main(args):
     if args.input_file == None:
