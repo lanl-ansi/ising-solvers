@@ -2,19 +2,17 @@
 
 ### Requirements ###
 # bqpjson v0.5.3 - pip install bqpjson
-# streaming-variational-monte-carlo - private repository
+# spin-vector-monte-carlo - private repository
 
 import sys, os, argparse, json, random, tempfile
 import shutil
 import time
 import numpy as np
+import subprocess
 
 from io import StringIO
-
-import subprocess
 from subprocess import Popen
 from subprocess import PIPE
-
 from collections import namedtuple
 
 import bqpjson
@@ -40,7 +38,7 @@ def parse_result(result_path):
         summary_line = all_lines[0].strip()
         summary_line = " ".join(summary_line.split())
 
-        num_sweeps = int(summary_line.split(' ')[0])
+        num_sweeps = int(float(summary_line.split(' ')[0]))
         solve_time = float(summary_line.split(' ')[1])
         minimum_energy = float(summary_line.split(' ')[2])
         best_solution = all_lines[1].replace('0', '')
@@ -72,12 +70,20 @@ def main(args):
     # Get the effective local field setting.
     elf_setting = 1 if not args.effective_local_field else 2
 
+    # Get the directory of the SVMC executable.
+    svmc_dir = os.path.dirname(shutil.which('svmc'))
+    annealing_schedule_path = os.path.join(svmc_dir, 'annealing_schedule.txt')
+    new_annealing_schedule_path = os.path.join(tmp_directory, 'annealing_schedule.txt')
+    shutil.copy(annealing_schedule_path, new_annealing_schedule_path)
+
+    # Run the algorithm and measure the elapsed time.
     start_time = time.time()
     subprocess.call(["mpiexec", "-np", "8", "svmc", "12", \
         str(args.runtime_limit), "8", "0", str(elf_setting), input_name], \
         stdout = subprocess.DEVNULL, cwd = tmp_directory)
     elapsed_time = time.time() - start_time
 
+    # Get the path to the result.
     result_path = os.path.join(tmp_directory, "SVMC_LowestEnergyFound_input.dat")
 
     # Get the best energy, corresponding solution, and other metadata.
