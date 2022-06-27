@@ -68,8 +68,11 @@ def flip(assignment, variable):
 def flip_delta(model, assignment, variable):
     delta = 0.0
     delta += -1.0 * model.linear_list[variable] * assignment[variable]
-    for i, coeff in model.adjacent[variable]:
-        delta += -1.0 * coeff * assignment[i] * assignment[variable]
+
+    if model.adjacent[variable] is not None:
+        for i, coeff in model.adjacent[variable]:
+            delta += -1.0 * coeff * assignment[i] * assignment[variable]
+
     return 2.0*delta
 
 
