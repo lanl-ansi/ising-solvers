@@ -42,7 +42,7 @@ def parse_result(result_path):
         minimum_energy_index = np.argmin(energies, axis = 0)
         minimum_energy = energies[minimum_energy_index]
         solve_time = solve_times[minimum_energy_index]
-        best_solution = energy_lines[minimum_energy_index].split(' ')[-1]
+        best_solution = energy_lines[minimum_energy_index].split('\t')[-1]
 
     return minimum_energy, best_solution, solve_time
 
@@ -96,7 +96,10 @@ def main(args):
     print()
 
     if args.show_solution:
-        bqp_solution = ', '.join(['-1' if solution[i] == '0' else '1' for i in range(0, nodes)])
+        solution_values = ['1' if s == '0' else '-1' for s in solution]
+        bqp_values = [solution_values[i] for i in data['variable_ids']]
+        bqp_solution = ', '.join(bqp_values)
+
         print('BQP_SOLUTION, %d, %d, %f, %f, %s' % \
             (nodes, edges, energy, solve_time, bqp_solution))
 
