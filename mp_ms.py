@@ -54,10 +54,11 @@ def make_zero_messages(model):
 def update_messages(model, messages, scratch, incomings):
     '''write updated messages to scratch and swap scratch and messages'''
     for i in model.variables:
-        for j, coeff in model.adjacent[i]:
-            scratch[i][j] = f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i])
-            #scratch[i][j] = 0.5*f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i]) + 0.5*messages[i][j]
-            #print(abs(scratch[i][j] - messages[i][j]))
+        if model.adjacent[i] is not None:
+            for j, coeff in model.adjacent[i]:
+                scratch[i][j] = f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i])
+                #scratch[i][j] = 0.5*f(2.0 * coeff, 2.0 * model.linear_list[i] + incomings[i] - messages[j][i]) + 0.5*messages[i][j]
+                #print(abs(scratch[i][j] - messages[i][j]))
     return scratch, messages
 
 
@@ -65,8 +66,9 @@ def compute_incomings(model, messages):
     '''sum of incoming messages for each spin'''
     incomings = [0.0] * len(model.linear_list)
     for i in model.variables:
-        for j, _ in model.adjacent[i]:
-            incomings[j] += messages[i][j]
+        if model.adjacent[i] is not None:
+            for j, _ in model.adjacent[i]:
+                incomings[j] += messages[i][j]
     return incomings
 
 
